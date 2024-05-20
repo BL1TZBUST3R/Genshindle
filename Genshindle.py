@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 import random
 from tabulate import tabulate
+import time
 
 characters = [
     {"name": "Venti", "element": "Anemo", "weapon": "Bow", "region": "Mondstadt"},
@@ -68,7 +69,7 @@ class Menu:
     def __init__(self, master):
         self.master = master
         self.master.title("Genshin Impact Character Guesser")
-        self.master.geometry("600x200")  # Widen the window
+        self.master.geometry("600x200")
 
         self.title_label = tk.Label(self.master, text="Genshin Impact Character Guesser", font=("Arial", 24))
         self.title_label.pack(pady=20)
@@ -85,29 +86,32 @@ class Menu:
     def start_normal_mode(self):
         self.master.destroy()
         root = tk.Tk()
-        my_gui = GenshinDel(root)
+        my_gui = GenshinDel(root, mode="normal")
         root.mainloop()
 
     def start_abyss_mode(self):
         self.master.destroy()
         root = tk.Tk()
-        my_gui = GenshinDel(root, mode="abyss")  # Pass the mode as an argument
+        my_gui = GenshinDel(root, mode="abyss")
         root.mainloop()
 
 
 class GenshinDel:
-    def __init__(self, master):
+    def __init__(self, master, mode="normal"):
         self.next_round_button = None
         self.master = master
         self.target_character = random.choice(characters)
         self.guesses = []
-        self.max_guesses = 5
+        self.max_guesses = 5 if mode == "normal" else float('inf')  # infinite guesses for Abyss mode
         self.clue_table = [["Guess", "Element", "Weapon", "Region", "Correct Clues"]]
         self.streak = 0
         self.high_score = 0
         self.try_count = 0
+        self.mode = mode
+        self.start_time = time.time()
+        self.time_left = 300  # 5 minutes
 
-        self.master.geometry("1200x600")  # Set the window size
+        self.master.geometry("1200x600")
         self.master.title("Genshin Impact Character Guesser")
 
         self.top_frame = tk.Frame(self.master)
@@ -121,6 +125,14 @@ class GenshinDel:
 
         self.try_count_label = tk.Label(self.top_frame, text="Try Count: 0", font=("Arial", 18), bg="#f0f0f0")
         self.try_count_label.pack(side="right", padx=10)
+
+        if mode == "normal":
+            self.time_label = None
+        else:
+            self.time_label = tk.Label(self.top_frame, text="Time: 5:00", font=("Arial", 18), bg="#f0f0f0")
+            self.time_label.pack(side="right", padx=10)
+        self.time_label = tk.Label(self.top_frame, text="Time: 5:00", font=("Arial", 18), bg="#f0f0f0")
+        self.time_label.pack(side="right", padx=10)
 
         self.guess_label = tk.Label(self.master, text="Enter a character's name:", font=("Arial", 18), bg="#f0f0f0")
         self.guess_label.pack(pady=20)
@@ -139,6 +151,20 @@ class GenshinDel:
         self.new_round_button = tk.Button(self.master, text="New Round", command=self.next_round, font=("Arial", 18))
         self.new_round_button.pack(pady=10)
 
+        if mode == "abyss":
+            self.update_time()
+
+    def update_time(self):
+        self.time_left -= 1
+        minutes, seconds = divmod(self.time_left, 60)
+        self.time_label.config(text=f"Time: {int(minutes):02d}:{int(seconds):02d}")
+        if self.time_left <= 0:
+            self.clue_text.config(state="normal")
+            self.clue_text.insert(tk.END, "Time's up! The character was " + self.target_character["name"] + " (" + self.target_character["element"] + ") with a " + self.target_character["weapon"] + " from " + self.target_character["region"] + "\n")
+            self.clue_text.config(state="disabled")
+            messagebox.showinfo("Time's up", "The character was " + self.target_character["name"] + " (" + self.target_character["element"] + ") with a " + self.target_character["weapon"] + " from " + self.target_character["region"])
+        self.master.after(1000, self.update_time)
+
     def check_guess(self):
         user_guess = self.guess_entry.get()
         self.guess_entry.delete(0, tk.END)
@@ -153,6 +179,7 @@ class GenshinDel:
                 self.high_score = self.streak
             self.streak_label.config(text=f"Streak: {self.streak}")
             self.high_score_label.config(text=f"High Score: {self.high_score}")
+            self.time_left += 10  # add 10 seconds to the timer
         else:
             self.guesses.append(user_guess)
             self.try_count += 1
@@ -175,6 +202,7 @@ class GenshinDel:
             self.clue_text.delete(1.0, tk.END)
             self.clue_text.insert(tk.END, tabulate(self.clue_table, headers="firstrow", tablefmt="orgtbl") + "\n")
             self.clue_text.config(state="disabled")
+            self.time_left -= 5  # subtract 5 seconds from the timer
 
             if len(self.guesses) == self.max_guesses:
                 self.clue_text.config(state="normal")
@@ -192,6 +220,8 @@ class GenshinDel:
         self.clue_text.config(state="disabled")
         self.try_count = 0
         self.try_count_label.config(text=f"Try Count: {self.try_count}")
+        self.time_left = 300  # reset the timer to 5 minutes
+        self.start_time = time.time()
 
 root = tk.Tk()
 my_menu = Menu(root)
