@@ -69,7 +69,7 @@ class Menu:
     def __init__(self, master):
         self.master = master
         self.master.title("Genshin Impact Character Guesser")
-        self.master.geometry("600x200")
+        self.master.geometry("600x450  ")
 
         self.title_label = tk.Label(self.master, text="Genshin Impact Character Guesser", font=("Arial", 24))
         self.title_label.pack(pady=20)
@@ -79,6 +79,9 @@ class Menu:
 
         self.abyss_mode_button = tk.Button(self.master, text="Abyss Mode", command=self.start_abyss_mode, font=("Arial", 18))
         self.abyss_mode_button.pack(pady=20)
+
+        self.character_info_button = tk.Button(self.master, text="Character Information", command=self.start_character_info, font=("Arial", 18))
+        self.character_info_button.pack(pady=20)
 
         self.exit_button = tk.Button(self.master, text="Exit", command=self.master.destroy, font=("Arial", 18))
         self.exit_button.pack(pady=20)
@@ -95,6 +98,18 @@ class Menu:
         my_gui = GenshinDel(root, mode="abyss")
         root.mainloop()
 
+    def start_new_mode(self):
+        self.master.destroy()
+        root = tk.Tk()
+        my_gui = GenshinDel(root, mode="new")
+        root.mainloop()
+
+    def start_character_info(self):
+        self.master.destroy()
+        root = tk.Tk()
+        my_gui = CharacterInfo(root)
+        root.mainloop()
+
 
 class GenshinDel:
     def __init__(self, master, mode="normal"):
@@ -109,7 +124,6 @@ class GenshinDel:
         self.try_count = 0
         self.mode = mode
         self.start_time = time.time()
-        self.time_left = 300  # 5 minutes
 
         self.master.geometry("1200x600")
         self.master.title("Genshin Impact Character Guesser")
@@ -128,11 +142,14 @@ class GenshinDel:
 
         if mode == "normal":
             self.time_label = None
+            self.time_left = None
+            self.update_time = lambda: None
         else:
             self.time_label = tk.Label(self.top_frame, text="Time: 5:00", font=("Arial", 18), bg="#f0f0f0")
             self.time_label.pack(side="right", padx=10)
-        self.time_label = tk.Label(self.top_frame, text="Time: 5:00", font=("Arial", 18), bg="#f0f0f0")
-        self.time_label.pack(side="right", padx=10)
+            self.time_left = 300  # 5 minutes
+            self.update_time = self.update_time_abyss
+            self.master.after(1000, self.update_time)
 
         self.guess_label = tk.Label(self.master, text="Enter a character's name:", font=("Arial", 18), bg="#f0f0f0")
         self.guess_label.pack(pady=20)
@@ -151,10 +168,10 @@ class GenshinDel:
         self.new_round_button = tk.Button(self.master, text="New Round", command=self.next_round, font=("Arial", 18))
         self.new_round_button.pack(pady=10)
 
-        if mode == "abyss":
-            self.update_time()
+        self.back_button = tk.Button(self.master, text="Back to Main Menu", command=self.back_to_menu, font=("Arial", 18))
+        self.back_button.pack(pady=10)
 
-    def update_time(self):
+    def update_time_abyss(self):
         self.time_left -= 1
         minutes, seconds = divmod(self.time_left, 60)
         self.time_label.config(text=f"Time: {int(minutes):02d}:{int(seconds):02d}")
@@ -163,7 +180,9 @@ class GenshinDel:
             self.clue_text.insert(tk.END, "Time's up! The character was " + self.target_character["name"] + " (" + self.target_character["element"] + ") with a " + self.target_character["weapon"] + " from " + self.target_character["region"] + "\n")
             self.clue_text.config(state="disabled")
             messagebox.showinfo("Time's up", "The character was " + self.target_character["name"] + " (" + self.target_character["element"] + ") with a " + self.target_character["weapon"] + " from " + self.target_character["region"])
-        self.master.after(1000, self.update_time)
+            self.master.after_cancel(self.update_time)
+        else:
+            self.master.after(1000, self.update_time)
 
     def check_guess(self):
         user_guess = self.guess_entry.get()
@@ -179,7 +198,7 @@ class GenshinDel:
                 self.high_score = self.streak
             self.streak_label.config(text=f"Streak: {self.streak}")
             self.high_score_label.config(text=f"High Score: {self.high_score}")
-            self.time_left += 10  # add 10 seconds to the timer
+            self.next_round()
         else:
             self.guesses.append(user_guess)
             self.try_count += 1
@@ -220,8 +239,38 @@ class GenshinDel:
         self.clue_text.config(state="disabled")
         self.try_count = 0
         self.try_count_label.config(text=f"Try Count: {self.try_count}")
-        self.time_left = 300  # reset the timer to 5 minutes
-        self.start_time = time.time()
+
+    def back_to_menu(self):
+        self.master.destroy()
+        root = tk.Tk()
+        my_menu = Menu(root)
+        root.mainloop()
+
+
+class CharacterInfo:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("Character Information")
+        self.master.geometry("800x600")
+
+        self.character_table = [["Name", "Element", "Weapon", "Region"]]
+        for character in characters:
+            self.character_table.append([character["name"], character["element"], character["weapon"], character["region"]])
+
+        self.text_widget = tk.Text(self.master, height=30, width=80, font=("Arial", 14))
+        self.text_widget.pack(pady=20)
+        self.text_widget.insert(tk.END, tabulate(self.character_table, headers="firstrow", tablefmt="orgtbl") + "\n")
+        self.text_widget.config(state="disabled")
+
+        self.back_button = tk.Button(self.master, text="Back to Main Menu", command=self.back_to_menu, font=("Arial", 18))
+        self.back_button.pack(pady=10)
+
+    def back_to_menu(self):
+        self.master.destroy()
+        root = tk.Tk()
+        my_menu = Menu(root)
+        root.mainloop()
+
 
 root = tk.Tk()
 my_menu = Menu(root)
