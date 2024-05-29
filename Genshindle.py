@@ -1,4 +1,5 @@
 import tkinter as tk
+from PIL import Image, ImageTk
 from tkinter import messagebox
 import random
 from tabulate import tabulate
@@ -69,7 +70,7 @@ class Menu:
     def __init__(self, master):
         self.master = master
         self.master.title("Genshin Impact Character Guesser")
-        self.master.geometry("600x450  ")
+        self.master.geometry("600x450")
 
         self.title_label = tk.Label(self.master, text="Genshin Impact Character Guesser", font=("Arial", 24))
         self.title_label.pack(pady=20)
@@ -253,16 +254,50 @@ class CharacterInfo:
         self.master.title("Character Information")
         self.master.geometry("800x600")
 
-        self.character_table = [["Name", "Element", "Weapon", "Region"]]
-        for character in characters:
-            self.character_table.append([character["name"], character["element"], character["weapon"], character["region"]])
+        self.canvas = tk.Canvas(self.master, width=800, height=600)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
 
-        self.text_widget = tk.Text(self.master, height=30, width=80, font=("Arial", 14))
-        self.text_widget.pack(pady=20)
-        self.text_widget.insert(tk.END, tabulate(self.character_table, headers="firstrow", tablefmt="orgtbl") + "\n")
-        self.text_widget.config(state="disabled")
+        self.scrollbar = tk.Scrollbar(self.master, orient=tk.VERTICAL, command=self.canvas.yview)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.back_button = tk.Button(self.master, text="Back to Main Menu", command=self.back_to_menu, font=("Arial", 18))
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.frame = tk.Frame(self.canvas)
+        self.canvas.create_window((0, 0), window=self.frame, anchor='nw')
+
+        for idx, character in enumerate(characters):
+            card_frame = tk.Frame(self.frame, borderwidth=2, relief="groove")
+            card_frame.grid(row=idx, column=0, padx=10, pady=10)
+
+            # Add character image (replace "image_path" with the actual path to the character image)
+            image_path = f"path/to/character_{character['name']}.png"  # replace with the actual path to the character image
+            image = Image.open(image_path)
+            image = image.resize((100, 100), Image.ANTIALIAS)
+            photo = ImageTk.PhotoImage(image)
+            image_label = tk.Label(card_frame, image=photo)
+            image_label.image = photo
+            image_label.grid(row=0, column=0, rowspan=2, sticky="nsew")
+
+            # Add character description
+            description_label = tk.Label(
+                card_frame,
+                text=f"Name: {character['name']}\nElement: {character['element']}\nWeapon: {character['weapon']}\nRegion: {character['region']}",
+                justify="left",
+                padx=10,
+                pady=10,
+                font=("Arial", 12),
+            )
+            description_label.grid(row=0, column=1, sticky="nsew")
+
+        self.frame.update_idletasks()
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+        self.back_button = tk.Button(
+            self.master,
+            text="Back to Main Menu",
+            command=self.back_to_menu,
+            font=("Arial", 14),
+        )
         self.back_button.pack(pady=10)
 
     def back_to_menu(self):
@@ -270,8 +305,6 @@ class CharacterInfo:
         root = tk.Tk()
         my_menu = Menu(root)
         root.mainloop()
-
-
 root = tk.Tk()
 my_menu = Menu(root)
 root.mainloop()
